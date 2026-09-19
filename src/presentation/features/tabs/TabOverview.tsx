@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, User, BarChart3 } from 'lucide-react';
 import type { Proyek, Aktivitas, Deliverable } from '@/core/entities/Proyek'; 
 import type { PenilaianResiko } from '@/core/entities/Risk';
 import { ProjectDetailsChart, type ChartDataItem } from '@/presentation/components/ProjectDetailsChart';
+import { getLogByProyek } from '@/infrastructure/repositories/proyek.repo';
 interface TabOverviewProps {
   proyek: Proyek;
   activities: Aktivitas[];
@@ -16,6 +17,38 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
   risks = [], 
   deliverables = [] 
 }) => {
+
+  // State untuk log aktivitas (realisasi biaya)
+  const [logsByAktivitas, setLogsByAktivitas] = useState<Record<string, any[]>>({});
+
+  // Fetch logs per proyek untuk mendapatkan costIncurred (realisasi biaya) yang sebenarnya
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const allLogs = await getLogByProyek(proyek.id);
+        const grouped: Record<string, any[]> = {};
+        if (Array.isArray(allLogs)) {
+          allLogs.forEach((log: any) => {
+            const aktId = log.aktivitasId;
+            if (!grouped[aktId]) grouped[aktId] = [];
+            grouped[aktId].push(log);
+          });
+        }
+        setLogsByAktivitas(grouped);
+      } catch (error) {
+        console.error('Gagal mengambil log aktivitas:', error);
+      }
+    };
+    if (proyek.id) fetchLogs();
+  }, [proyek.id]);
+
+  // Helper: Hitung total realisasi biaya dari log costIncurred
+  const getRealisasiBiaya = (aktivitasId: string): number => {
+    const logs = logsByAktivitas[aktivitasId] || [];
+    return logs.reduce((total: number, log: any) => {
+      return total + (Number(log.costIncurred) || 0);
+    }, 0);
+  };
 
   // 1. Kalkulasi Progress Aktivitas
   const completedActivities = activities.filter((a) => 
@@ -39,14 +72,9 @@ const approvedDeliverables = deliverables.filter((d) => {
  
   const budgetTotal = Number(proyek.budget || 0);
 
+  // Realisasi biaya: gunakan data costIncurred dari log aktivitas (bukan estimasi)
   const budgetTerpakai = activities.reduce((total, act) => {
-  const persentaseBobot = Number(act.weight || 0) / 100;
-  const budgetAktivitas = budgetTotal * persentaseBobot; 
-    
-  const persentaseProgres = Number(act.progress || 0) / 100;
-  const realisasiAktivitas = budgetAktivitas * persentaseProgres;
-
-    return total + realisasiAktivitas;
+    return total + getRealisasiBiaya(act.id);
   }, 0);
 
   // Hitung persentasenya
@@ -54,17 +82,13 @@ const approvedDeliverables = deliverables.filter((d) => {
 
   const chartData = activities.map((act: any) => {
   // 1. Ambil bobot (weight) dari schema lu. Kalau null, anggap 0.
-  // Misalnya weight = 30, berarti 30/100 = 0.3 (30% dari total proyek)
   const persentaseBobot = Number(act.weight || 0) / 100;
   
   // 2. Budget Aktivitas = Total Budget Proyek * Bobot Aktivitas
   const budgetAktivitas = budgetTotal * persentaseBobot; 
   
-  // 3. Ambil progress aktual dari schema lu.
-  const persentaseProgres = Number(act.progress || 0) / 100;
-  
-  // 4. Realisasi = Budget Aktivitas * Progress aktual (Konsep Earned Value)
-  const realisasiAktivitas = budgetAktivitas * persentaseProgres;
+  // 3. Realisasi dari log costIncurred yang sebenarnya
+  const realisasiAktivitas = getRealisasiBiaya(act.id);
 
   return {
     name: act.name || act.nama || 'Aktivitas',

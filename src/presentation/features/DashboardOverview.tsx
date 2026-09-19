@@ -1,16 +1,51 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DashboardChart } from './DashboardChart';
 import { 
   FolderGit2, TrendingUp, AlertTriangle, CheckCircle2, 
-  Clock, Zap, ArrowUpRight 
+  Clock, Zap, ArrowUpRight, ChevronLeft, ChevronRight, CalendarDays, Filter, X
 } from 'lucide-react';
 import { 
   useDashboardStats, useActiveProjects, 
   useDashboardCharts, usePredictions, useDashboardActivities, useVendorPerformance
 } from '@/use-cases/hooks/useDashboard';
 import { useSemuaProyek } from '@/use-cases/hooks/useProyek';
+
+interface OverviewFilters {
+  dateDoneFrom: string;
+  dateDoneTo: string;
+  durationFrom: string; // tanggal mulai durasi
+  durationTo: string;   // tanggal selesai durasi
+}
+
+const EMPTY_FILTERS: OverviewFilters = {
+  dateDoneFrom: '',
+  dateDoneTo: '',
+  durationFrom: '',
+  durationTo: '',
+};
+
+function isDateInRange(dateStr: string | undefined, from: string, to: string): boolean {
+  if (!from && !to) return true;
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  if (from && d < new Date(from)) return false;
+  if (to && d > new Date(to + 'T23:59:59')) return false;
+  return true;
+}
+
+function hasActiveFilters(filters: OverviewFilters): boolean {
+  return Object.values(filters).some(v => v !== '');
+}
+
+function countActiveFilters(filters: OverviewFilters): number {
+  let count = 0;
+  if (filters.dateDoneFrom || filters.dateDoneTo) count++;
+  if (filters.durationFrom || filters.durationTo) count++;
+  return count;
+}
 
 export const DashboardOverview = () => {
   const { data: statsAPI, isLoading: loadingStats } = useDashboardStats();
@@ -20,6 +55,14 @@ export const DashboardOverview = () => {
   const { data: activitiesAPI, isLoading: loadingActivities } = useDashboardActivities();
   const { data: vendorData, isLoading: loadingVendor } = useVendorPerformance();
   const { data: allProjectsAPI } = useSemuaProyek();
+
+  // Slider state
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
+  // Overview filter state
+  const [filters, setFilters] = useState<OverviewFilters>(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
 
   let currentUser: any = null;
   if (typeof window !== "undefined") {
@@ -163,18 +206,144 @@ export const DashboardOverview = () => {
   
   let currentSvgAngle = 0; // Untuk rotasi dinamis Donut Chart
 
+  // Overview filter logic
+  const filteredActiveProjects = useMemo(() => {
+    if (!hasActiveFilters(filters)) return activeProjects;
+    return activeProjects.filter((p: any) => {
+      // Filter by Date Done (tanggal selesai)
+      const doneDate = p.tanggalSelesai || p.endDate;
+      if (!isDateInRange(doneDate, filters.dateDoneFrom, filters.dateDoneTo)) return false;
+
+      // Filter by Project Duration (range tanggal mulai s/d selesai)
+      const startDate = p.tanggalMulai || p.startDate;
+      if (!isDateInRange(startDate, filters.durationFrom, filters.durationTo)) return false;
+
+      return true;
+    });
+  }, [activeProjects, filters]);
+
+  // Slider logic - slide one card at a time
+  const CARDS_PER_VIEW = 3;
+  const maxSlideIndex = Math.max(0, filteredActiveProjects.length - CARDS_PER_VIEW);
+  const canSlideLeft = sliderIndex > 0;
+  const canSlideRight = sliderIndex < maxSlideIndex;
+
+  // Reset slider when filter changes
+  useEffect(() => { setSliderIndex(0); }, [filters]);
+
+  const slideLeft = () => {
+    if (canSlideLeft) setSliderIndex(prev => Math.max(0, prev - 1));
+  };
+  const slideRight = () => {
+    if (canSlideRight) setSliderIndex(prev => Math.min(maxSlideIndex, prev + 1));
+  };
+
+  const updateFilter = (key: keyof OverviewFilters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters(EMPTY_FILTERS);
+  };
+
   return (
     <div className="w-full space-y-6 pb-10">
       
       {/* HEADER SECTION */}
-      <div className="flex justify-between items-end mb-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-2 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Pemantauan proyek real-time
           </p>
         </div>
+        {/* Overview Filters Toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition-all duration-200 shadow-sm ${
+              hasActiveFilters(filters)
+                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            Filters
+            {countActiveFilters(filters) > 0 && (
+              <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {countActiveFilters(filters)}
+              </span>
+            )}
+          </button>
+          {hasActiveFilters(filters) && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> Reset
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Overview Filters Panel */}
+      {showFilters && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
+          <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <Filter className="w-4 h-4 text-slate-400" />
+            Overview Filters
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Date Done Filter */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Date Done
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={filters.dateDoneFrom}
+                  onChange={e => updateFilter('dateDoneFrom', e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all"
+                  placeholder="Dari"
+                />
+                <span className="text-xs text-slate-400 font-medium">s/d</span>
+                <input
+                  type="date"
+                  value={filters.dateDoneTo}
+                  onChange={e => updateFilter('dateDoneTo', e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all"
+                  placeholder="Sampai"
+                />
+              </div>
+            </div>
+
+            {/* Project Duration Filter (Date Range) */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5" /> Project Duration
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={filters.durationFrom}
+                  onChange={e => updateFilter('durationFrom', e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all"
+                  placeholder="Dari"
+                />
+                <span className="text-xs text-slate-400 font-medium">s/d</span>
+                <input
+                  type="date"
+                  value={filters.durationTo}
+                  onChange={e => updateFilter('durationTo', e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all"
+                  placeholder="Sampai"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* STATS CARDS (Top Row) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -209,39 +378,86 @@ export const DashboardOverview = () => {
         </div>
       </div>
 
-      {/* ACTIVE PROJECTS (Second Row) - FULL API */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {loadingProjects ? (
-           <div className="col-span-3 text-center text-slate-400 py-4 border border-dashed rounded-xl">Memuat data proyek dari API...</div>
-        ) : activeProjects.length > 0 ? (
-          activeProjects.map((proyek: any) => (
-            <div key={proyek.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-medium text-slate-400">PRJ-{proyek.id.substring(0,4)}</span>
-                <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-full font-semibold tracking-wide uppercase">
-                  {proyek.status}
-                </span>
-              </div>
-              <h3 className="font-semibold text-slate-800 text-sm line-clamp-1">{proyek.nama}</h3>
-              <p className="text-xs text-slate-400 mt-1 mb-5">
-                {proyek.tanggalSelesai ? new Date(proyek.tanggalSelesai).toLocaleDateString() : 'Belum set timeline'}
-              </p>
-              
-              <div className="flex justify-between text-xs font-medium text-slate-600 mb-2">
-                <span>Progress</span><span>{proyek.progress}%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-4">
-                <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${proyek.progress}%` }}></div>
-              </div>
-              
-              <div className="flex justify-between items-center mt-4 border-t border-slate-50 pt-3">
-                <span className="text-[11px] font-medium text-slate-400">Budget: Rp {(proyek.budget / 1000000 || 0).toFixed(1)}M</span>
-              </div>
+      {/* ACTIVE PROJECTS (Second Row) - SLIDER */}
+      <div className="relative">
+        {/* Slider Header */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-sm font-semibold text-slate-600">Proyek Aktif ({filteredActiveProjects.length})</h3>
+          {filteredActiveProjects.length > CARDS_PER_VIEW && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={slideLeft}
+                disabled={!canSlideLeft}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
+                  canSlideLeft
+                    ? 'border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 cursor-pointer'
+                    : 'border-slate-100 text-slate-300 cursor-not-allowed'
+                }`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-slate-400 min-w-[40px] text-center">
+                {sliderIndex + 1} / {maxSlideIndex + 1}
+              </span>
+              <button
+                onClick={slideRight}
+                disabled={!canSlideRight}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
+                  canSlideRight
+                    ? 'border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 cursor-pointer'
+                    : 'border-slate-100 text-slate-300 cursor-not-allowed'
+                }`}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-          ))
-        ) : (
-          <div className="col-span-3 text-center text-slate-400 py-4 border border-dashed rounded-xl">Belum ada proyek aktif di sistem.</div>
-        )}
+          )}
+        </div>
+
+        {/* Slider Content */}
+        <div className="overflow-hidden" ref={sliderRef}>
+          {loadingProjects ? (
+            <div className="text-center text-slate-400 py-4 border border-dashed rounded-xl">Memuat data proyek dari API...</div>
+          ) : filteredActiveProjects.length > 0 ? (
+            <div
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{ transform: `translateX(-${sliderIndex * (100 / CARDS_PER_VIEW)}%)` }}
+            >
+              {filteredActiveProjects.map((proyek: any) => (
+                <div
+                  key={proyek.id}
+                  className="w-full md:w-1/3 flex-shrink-0 px-2 first:pl-0 last:pr-0"
+                >
+                  <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] h-full">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-medium text-slate-400">PRJ-{proyek.id.substring(0,4)}</span>
+                      <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-full font-semibold tracking-wide uppercase">
+                        {proyek.status}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-slate-800 text-sm line-clamp-1">{proyek.nama}</h3>
+                    <p className="text-xs text-slate-400 mt-1 mb-5">
+                      {proyek.tanggalSelesai ? new Date(proyek.tanggalSelesai).toLocaleDateString() : 'Belum set timeline'}
+                    </p>
+                    
+                    <div className="flex justify-between text-xs font-medium text-slate-600 mb-2">
+                      <span>Progress</span><span>{proyek.progress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 mb-4">
+                      <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-700" style={{ width: `${proyek.progress}%` }}></div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center mt-4 border-t border-slate-50 pt-3">
+                      <span className="text-[11px] font-medium text-slate-400">Budget: Rp {(proyek.budget / 1000000 || 0).toFixed(1)}M</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-slate-400 py-4 border border-dashed rounded-xl">Belum ada proyek aktif dalam periode ini.</div>
+          )}
+        </div>
       </div>
 
       {/* CHARTS AREA - FULL API */}

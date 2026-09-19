@@ -141,9 +141,9 @@ export const CreateAktivitas: React.FC<CreateAktivitasProps> = ({ isOpen, onClos
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Status</label>
                 <select name="status" value={formData.status} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white">
                   <option value="Belum Mulai">Belum Mulai</option>
-                  <option value="berjalan">Berjalan</option>
-                  <option value="selesai">Selesai</option>
-                  <option value="terlambat">Terlambat</option>
+                  <option value="Berjalan">Berjalan</option>
+                  <option value="Selesai">Selesai</option>
+                  <option value="Terlambat">Terlambat</option>
                 </select>
               </div>
             </div>

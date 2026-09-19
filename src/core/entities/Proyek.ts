@@ -107,6 +107,9 @@ export interface Aktivitas {
 
 export type StatusAktivitas =
   | "Belum Mulai"
+  | "Berjalan"
+  | "Selesai"
+  | "Terlambat"
   | "berjalan"
   | "selesai"
   | "terlambat"

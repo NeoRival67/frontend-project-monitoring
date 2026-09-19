@@ -3,7 +3,7 @@ import { Plus, Edit2, Trash2, Calendar, AlertTriangle, ListTodo } from 'lucide-r
 import type { Proyek, Aktivitas} from '@/core/entities/Proyek';
 import { PenilaianResiko } from '@/core/entities';
 import { GanttChart } from '@/presentation/components/GanttChart';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CreateAktivitas } from '@/presentation/components/CreateAktivitas';
 import { UpdateAktivitas } from '@/presentation/components/UpdateAktivitas';
 import { deleteAktivitas } from '@/infrastructure/repositories/proyek.repo';
@@ -11,6 +11,7 @@ import { DeleteAktivitas } from '@/presentation/components/DeleteAktivitas';
 import { CreateRisk } from '@/presentation/components/CreateRisk';
 import { DeleteRisk } from '@/presentation/components/DeleteRisk';
 import { RiskRepository } from '@/infrastructure/repositories/risk.repo';
+import { getLogByProyek } from '@/infrastructure/repositories/proyek.repo';
 
 interface TabPlanningProps {
   proyek: Proyek;
@@ -28,6 +29,37 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
   const [isCreateRiskOpen, setIsCreateRiskOpen] = useState(false);
   const [isDeleteRiskOpen, setIsDeleteRiskOpen] = useState(false); // Mengganti isEditRiskOpen
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
+  const [logsByAktivitas, setLogsByAktivitas] = useState<Record<string, any[]>>({});
+
+  // Fetch logs per proyek untuk mendapatkan costIncurred (realisasi biaya) yang sebenarnya
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const allLogs = await getLogByProyek(proyek.id);
+        // Group logs by aktivitasId
+        const grouped: Record<string, any[]> = {};
+        if (Array.isArray(allLogs)) {
+          allLogs.forEach((log: any) => {
+            const aktId = log.aktivitasId;
+            if (!grouped[aktId]) grouped[aktId] = [];
+            grouped[aktId].push(log);
+          });
+        }
+        setLogsByAktivitas(grouped);
+      } catch (error) {
+        console.error('Gagal mengambil log aktivitas:', error);
+      }
+    };
+    if (proyek.id) fetchLogs();
+  }, [proyek.id]);
+
+  // Helper: Hitung total realisasi biaya dari log costIncurred
+  const getRealisasiBiaya = (aktivitasId: string): number => {
+    const logs = logsByAktivitas[aktivitasId] || [];
+    return logs.reduce((total: number, log: any) => {
+      return total + (Number(log.costIncurred) || 0);
+    }, 0);
+  };
 
   const rawTeams = proyek.teams || (proyek as any).users || (proyek as any).teamMembers || [];
   // Data tim proyek 
@@ -38,19 +70,14 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
   })) || [];
 
   const handleSuccess = () => {
-    // Panggil fungsi refetch API di sini. 
-    // Jika menggunakan React Query/SWR: mutate() atau refetch()
     console.log("Data berhasil disimpan, silakan refresh data!");
   };
 
   // Fungsi untuk handle perubahan status risiko
   const handleStatusChange = async (riskId: string, newStatus: string) => {
     try {
-      // Pastikan fungsi ini udah lu buat di risk.repo.ts ya!
       await RiskRepository.updateRiskStatus(riskId, newStatus);
       
-      // Refresh data tabel setelah berhasil update
-      // Panggil fungsi fetchRisks() lu di sini
       
     } catch (error) {
       console.error("Gagal update status risiko:", error);
@@ -63,12 +90,11 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
     
     setIsDeleting(true);
     try {
-      await deleteAktivitas(deleteTarget.id); // Panggil API lu
+      await deleteAktivitas(deleteTarget.id); 
       
-      // Refresh tabel aktivitas di sini (panggil ulang fungsi fetch lu)
-      // fetchAktivitas(); 
+  
       
-      setIsDeleteOpen(false); // Tutup modal kalau sukses
+      setIsDeleteOpen(false); 
     } catch (error) {
       console.error("Error Delete aktivitas:", error);
       alert("Gagal menghapus aktivitas.");
@@ -152,7 +178,9 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
                 
                 // Gunakan act.progress sesuai nama field dari API (atau act.progres jika di interface lama)
                 const currentProgress = act.progress ?? act.progress ?? 0;
-                const realisasiAct = budgetAct * (currentProgress / 100);
+                
+                // Realisasi biaya: gunakan data costIncurred dari log aktivitas (bukan estimasi dari progress)
+                const realisasiAct = getRealisasiBiaya(act.id);
 
                 return (
                   <tr key={act.id} className="hover:bg-slate-50/50 transition-colors">
