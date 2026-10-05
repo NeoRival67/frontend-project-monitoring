@@ -109,14 +109,17 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
   };
 
   // Format Tanggal (Misal: 1 Apr - 30 Apr 24)
-  const formatPeriode = (start?: string, end?: string) => {
-    if (!start || !end) return '-';
-    const s = new Date(start).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-    const e = new Date(end).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' });
+  // Format Tanggal (Misal: 1 Apr — 30 Apr 24 (30 hari))
+  const formatPeriode = (start?: string | null, end?: string | null, durasi?: number | null) => {
+    if (!start && !end) return <span className="text-slate-400 italic">Belum ada</span>;
+    const s = start ? new Date(start).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-';
+    const e = end ? new Date(end).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' }) : '-';
     return (
       <div className="flex flex-col">
-        <span className="text-slate-800">{s}</span>
-        <span className="text-slate-500">— {e}</span>
+        <span className="font-semibold text-slate-800">{s} — {e}</span>
+        {durasi !== undefined && durasi !== null ? (
+          <span className="text-[11px] text-slate-500 font-medium">{durasi} hari</span>
+        ) : null}
       </div>
     );
   };
@@ -162,7 +165,8 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
             <thead className="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
               <tr>
                 <th className="pb-3 pr-4">Aktivitas</th>
-                <th className="pb-3 px-4">Periode</th>
+                <th className="pb-3 px-4">Periode Rencana</th>
+                <th className="pb-3 px-4">Periode Aktual</th>
                 <th className="pb-3 px-4">Tim Assign</th>
                 <th className="pb-3 px-4">Budget</th>
                 <th className="pb-3 px-4">Realisasi</th>
@@ -192,8 +196,14 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
                       </p>
                     </td>
                     <td className="py-4 px-4 text-xs">
-                      {/* Gunakan startDate & dueDate dari API baru, fallback ke format lama */}
-                      <p className="font-semibold text-slate-800"> {act.startDate ? new Date(act.startDate).toLocaleDateString('id-ID') : '-'} - {act.dueDate ? new Date(act.dueDate).toLocaleDateString('id-ID') : '-'}</p>
+                      {formatPeriode(act.startDate, act.dueDate, act.durasiRencana)}
+                    </td>
+                    <td className="py-4 px-4 text-xs">
+                      {act.actualStartDate ? (
+                        formatPeriode(act.actualStartDate, act.actualEndDate, act.durasiAktual)
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Belum mulai</span>
+                      )}
                     </td>
                     <td className="py-4 px-4">
                       {/* Tampilkan inisial Assignee yang sebenarnya (dari API) */}
@@ -264,7 +274,7 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
                   </tr>
                 );
               }) : (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">Belum ada aktivitas.</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-slate-400">Belum ada aktivitas.</td></tr>
               )}
             </tbody>
           </table>
@@ -280,12 +290,12 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
             <Calendar className="w-5 h-5 text-blue-500" /> Gantt Chart
           </h3>
           
-          {/* Legenda */}
-          <div className="flex items-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-slate-50 px-4 py-2 rounded-lg">
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> Selesai</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> Berjalan</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-slate-300"></div> Belum Mulai</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div> Terlambat</span>
+          {/* Legenda Sesuai Requirement */}
+          <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-600 uppercase tracking-wider bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-200/60">
+            <span className="flex items-center gap-1.5"><div className="w-3.5 h-3 rounded bg-slate-300 border border-slate-400/50"></div> Periode Rencana</span>
+            <span className="flex items-center gap-1.5"><div className="w-3.5 h-3 rounded bg-blue-500"></div> Aktual (On-going)</span>
+            <span className="flex items-center gap-1.5"><div className="w-3.5 h-3 rounded bg-emerald-500"></div> Aktual (Sukses)</span>
+            <span className="flex items-center gap-1.5"><div className="w-3.5 h-3 rounded bg-rose-500"></div> Aktual (Gagal / Terlambat)</span>
           </div>
         </div>
 

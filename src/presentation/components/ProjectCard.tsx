@@ -8,6 +8,7 @@ interface ProjectCardProps {
   proyek: Record<string, any>; 
   onEdit?: (proyek: any) => void;
   onDelete?: (id: string, namaProyek: string) => void;
+  canManage?: boolean;
 }
 
 const safeString = (value: unknown): string => typeof value === 'string' ? value : '';
@@ -23,30 +24,45 @@ const getStatusColor = (status: unknown): string => {
 };
 const getClientName = (proyek: Record<string, unknown>): string => {
   const klien = proyek.klien as Record<string, unknown> | undefined;
+  if (klien && typeof klien.nama === 'string') return klien.nama;
   const client = proyek.client as Record<string, unknown> | undefined;
-  if (klien?.nama || klien?.name) return safeString(klien.nama || klien.name);
-  if (client?.nama || client?.name) return safeString(client.nama || client.name);
-  if (typeof proyek.klien === 'string') return proyek.klien;
-  if (typeof proyek.client === 'string') return proyek.client;
+  if (client && typeof client.name === 'string') return client.name;
+  if (typeof proyek.klienNama === 'string') return proyek.klienNama;
   if (typeof proyek.clientName === 'string') return proyek.clientName;
-  if (typeof proyek.namaKlien === 'string') return proyek.namaKlien;
-  return '-';
+  return 'Tidak ada klien';
 };
-const getTeamMembers = (proyek: Record<string, any>): any[] => {
-  if (Array.isArray(proyek.teams)) return proyek.teams; 
-  if (Array.isArray(proyek.tim)) return proyek.tim;
-  if (Array.isArray(proyek.team)) return proyek.team;
-  if (Array.isArray(proyek.teamMembers)) return proyek.teamMembers;
+const getTeamMembers = (proyek: Record<string, unknown>): Array<{ name: string; avatar: string }> => {
+  const members = proyek.tim || proyek.team || proyek.teamMembers;
+  if (Array.isArray(members) && members.length > 0) {
+    return members.map(m => {
+      const u = m.user || m;
+      return {
+        name: typeof u.name === 'string' ? u.name : 'Team Member',
+        avatar: typeof u.avatar === 'string' ? u.avatar : '',
+      };
+    });
+  }
   return [];
 };
-const formatDate = (value: unknown): string => {
+const formatDate = (date: unknown): string => {
   try {
-    if (!value) return '?';
-    const dateStr = safeString(value);
-    if (!dateStr) return '?';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '?';
-    return date.toLocaleDateString('id-ID', {month:'short', year:'numeric'});
+    if (!date) return '-';
+    const dateStr = safeString(date);
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return '-';
+  }
+};
+const getInitials = (name: string): string => {
+  try {
+    const trimmed = name.trim();
+    if (!trimmed) return '?';
+    const parts = trimmed.split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return trimmed.substring(0, 2).toUpperCase();
   } catch {
     return '?';
   }
@@ -68,7 +84,7 @@ const calculateDaysLeft = (endDate: unknown): { text: string; isLate: boolean } 
 };
 
 
-export const ProjectCard: React.FC<ProjectCardProps> = ({ proyek, onEdit, onDelete }) => {
+export const ProjectCard: React.FC<ProjectCardProps> = ({ proyek, onEdit, onDelete, canManage }) => {
   // Derived values
   const clientName = getClientName(proyek);
   const teamMembers = getTeamMembers(proyek);
@@ -114,45 +130,28 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ proyek, onEdit, onDele
     <Link href={`/proyek/${proyek.id}`} className="block group">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-700 relative">
         
-        <div className="absolute right-4 top-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          {(() => {
-            let isAllowed = false;
-            try {
-              const usr = localStorage.getItem("user");
-              if (usr) {
-                const parsed = JSON.parse(usr);
-                if (parsed.role === "ADMIN" || parsed.role === "PM") {
-                  isAllowed = true;
-                }
-              }
-            } catch(e) {}
-
-            if (!isAllowed) return null;
-
-            return (
-              <>
-                {onEdit && (
-                  <button 
-                    onClick={(e) => handleActionClick(e, () => onEdit(proyek))}
-                    className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                    title="Edit Proyek"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                )}
-                {onDelete && (
-                  <button 
-                    onClick={(e) => handleActionClick(e, () => onDelete(proyek.id as string, displayName))}
-                    className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
-                    title="Hapus Proyek"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </>
-            );
-          })()}
-        </div>
+        {canManage && (
+          <div className="absolute right-4 top-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onEdit && (
+              <button 
+                onClick={(e) => handleActionClick(e, () => onEdit(proyek))}
+                className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                title="Edit Proyek"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            {onDelete && (
+              <button 
+                onClick={(e) => handleActionClick(e, () => onDelete(proyek.id as string, displayName))}
+                className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                title="Hapus Proyek"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-5 mt-2">
           <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">

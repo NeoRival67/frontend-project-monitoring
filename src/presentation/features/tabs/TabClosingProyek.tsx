@@ -22,15 +22,7 @@ export default function TabClosingProyek({
 }: TabClosingProyekProps) {
   const [activities, setActivities] = useState<Aktivitas[]>(initialActivities);
   const storageKey = `verified-activities-${proyekId}`;
-  const [verifiedIds, setVerifiedIds] = useState<Set<string>>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        return new Set(JSON.parse(saved));
-      }
-    }
-    return new Set();
-  });
+  const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
   
   const [bastFileName, setBastFileName] = useState<string | null>(null);
   const [bastFileUrl, setBastFileUrl] = useState<string | null>(null);
@@ -40,16 +32,28 @@ export default function TabClosingProyek({
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState({ title: "", message: "" });
   const isClosedStorageKey = `is-project-closed-${proyekId}`;
-  const [isProjectClosed, setIsProjectClosed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem(isClosedStorageKey) === "true";
-    }
-    return false;
-  });
+  const [isProjectClosed, setIsProjectClosed] = useState(false);
+  const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(Array.from(verifiedIds)));
-  }, [verifiedIds, storageKey]);
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setVerifiedIds(new Set(JSON.parse(saved)));
+      }
+      const closed = localStorage.getItem(isClosedStorageKey) === "true";
+      if (closed) {
+        setIsProjectClosed(true);
+      }
+    } catch (e) {}
+    setHasLoadedStorage(true);
+  }, [storageKey, isClosedStorageKey]);
+
+  useEffect(() => {
+    if (hasLoadedStorage) {
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(verifiedIds)));
+    }
+  }, [verifiedIds, storageKey, hasLoadedStorage]);
 
   useEffect(() => {
     const fetchClosingData = async () => {

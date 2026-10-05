@@ -89,6 +89,10 @@ export interface Aktivitas {
   status: StatusAktivitas;
   startDate?: string;
   dueDate?: string;
+  durasiRencana?: number | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  durasiAktual?: number | null;
   category?: string;
   weight?: number;
   progress: number;

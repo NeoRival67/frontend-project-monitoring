@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSemuaProyek } from "@/use-cases/hooks/useProyek";
 import { ProjectCard } from "@/presentation/components/ProjectCard";
 import { CreateProjectModal } from "@/presentation/components/CreateProjectModal"; 
@@ -41,20 +41,26 @@ export function ProjectManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("Semua");
 
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const usr = localStorage.getItem("user");
+      if (usr) setCurrentUser(JSON.parse(usr));
+    } catch(e) {}
+  }, []);
+
   // Handle response data format from backend
   const responseData = (response as any)?.data || response;
   const rawProjects: Record<string, unknown>[] = (Array.isArray(responseData) ? responseData : []) as unknown as Record<string, unknown>[];
   
-  // Filter berdasarkan role: ADMIN/PM lihat semua, TIM/VENDOR lihat yang diassign saja
-  let currentUser: any = null;
-  try {
-    const usr = localStorage.getItem("user");
-    if (usr) currentUser = JSON.parse(usr);
-  } catch(e) {}
-
-  const safeProjects = rawProjects.filter(p => {
+  // Filter berdasarkan role: PM lihat semua, TIM/VENDOR lihat yang diassign saja, ADMIN dilarang
+  const safeProjects = isMounted ? rawProjects.filter(p => {
     if (!currentUser) return false;
-    if (currentUser.role === "ADMIN" || currentUser.role === "PM") return true;
+    if (currentUser.role === "ADMIN") return false;
+    if (currentUser.role === "PM") return true;
     
     // 1. Jika role adalah CLIENT
     if (currentUser.role === "CLIENT" || currentUser.role === "Client") {
@@ -96,7 +102,7 @@ export function ProjectManager() {
       (member.user?.id === currentUser.id) ||
       (member.id === currentUser.id)
     );
-  });
+  }) : [];
 
   // Derived counts
   const countAll = safeProjects.length;
@@ -121,6 +127,22 @@ export function ProjectManager() {
   //   alert(`Nanti ini ngebuka modal edit untuk proyek: ${proyek.nama || proyek.name}`);
   // };
 
+  if (isMounted && currentUser?.role === "ADMIN") {
+    return (
+      <div className="w-full py-20 text-center">
+        <div className="max-w-md mx-auto p-6 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-2xl">
+          <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+            ✕
+          </div>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Akses Ditolak</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Role Admin tidak memiliki izin untuk melihat atau mengelola proyek. Silakan gunakan fitur Master User & Tim atau Master Client / Vendor.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full pb-10">
       
@@ -128,36 +150,22 @@ export function ProjectManager() {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Daftar Proyek</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{countAll} proyek terdaftar di sistem</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {isMounted ? `${countAll} proyek terdaftar di sistem` : "Memuat daftar proyek..."}
+          </p>
         </div>
-        {/* Tombol Buat Proyek Baru hanya untuk ADMIN atau PM */}
-        {(() => {
-          let isAllowed = false;
-          try {
-            const usr = localStorage.getItem("user");
-            if (usr) {
-              const parsed = JSON.parse(usr);
-              if (parsed.role === "ADMIN" || parsed.role === "PM") {
-                isAllowed = true;
-              }
-            }
-          } catch(e) {}
-
-          if (isAllowed) {
-            return (
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Buat Proyek Baru
-              </button>
-            );
-          }
-          return null;
-        })()}
+        {/* Tombol Buat Proyek Baru hanya untuk PM */}
+        {isMounted && currentUser?.role === "PM" && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Buat Proyek Baru
+          </button>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -180,10 +188,10 @@ export function ProjectManager() {
         {/* Tabs Status */}
         <div className="flex gap-1 overflow-x-auto pb-1 lg:pb-0 hide-scrollbar">
           {[
-            { id: "Semua", label: `All (${countAll})` },
-            { id: "Planning", label: `Planning (${countPlanning})` },
-            { id: "Pelaksanaan", label: `On Going (${countPelaksanaan})` },
-            { id: "Closing", label: `Closing (${countClosing})` }
+            { id: "Semua", label: isMounted ? `All (${countAll})` : "All" },
+            { id: "Planning", label: isMounted ? `Planning (${countPlanning})` : "Planning" },
+            { id: "Pelaksanaan", label: isMounted ? `On Going (${countPelaksanaan})` : "On Going" },
+            { id: "Closing", label: isMounted ? `Closing (${countClosing})` : "Closing" }
           ].map(tab => (
             <button 
               key={tab.id}
@@ -202,7 +210,7 @@ export function ProjectManager() {
 
       {/* Content Grid */}
       <div>
-        {isLoading ? (
+        {!isMounted || isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
              <p className="text-slate-500 text-sm">Memuat daftar proyek...</p>
@@ -222,6 +230,7 @@ export function ProjectManager() {
               <ProjectCard 
                 key={String(proyek.id)} 
                 proyek={proyek} 
+                canManage={currentUser?.role === "PM"}
                 onDelete={handleDeleteProject}
                 //onEdit={handleEditProject} 
               />

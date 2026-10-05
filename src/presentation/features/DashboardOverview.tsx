@@ -64,18 +64,21 @@ export const DashboardOverview = () => {
   const [filters, setFilters] = useState<OverviewFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
 
-  let currentUser: any = null;
-  if (typeof window !== "undefined") {
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
     try {
       const usr = localStorage.getItem("user");
-      if (usr) currentUser = JSON.parse(usr);
+      if (usr) setCurrentUser(JSON.parse(usr));
     } catch(e) {}
-  }
+  }, []);
 
   const userRole = currentUser?.role?.toUpperCase() || "";
-  const isVendorOrTim = userRole === "VENDOR" || userRole === "TIM" || userRole === "STAFF";
+  const isNotAllowed = isMounted && (userRole === "VENDOR" || userRole === "TIM" || userRole === "STAFF" || userRole === "ADMIN");
 
-  if (isVendorOrTim) {
+  if (isNotAllowed) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-20 px-4">
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 max-w-md text-center shadow-sm">
@@ -91,7 +94,7 @@ export const DashboardOverview = () => {
     );
   }
 
-  const isRestricted = userRole !== "ADMIN" && userRole !== "PM";
+  const isRestricted = userRole !== "PM";
   const isClient = userRole === "CLIENT";
 
   const rawAllProjects = (allProjectsAPI as any)?.data || allProjectsAPI || [];
@@ -99,7 +102,7 @@ export const DashboardOverview = () => {
 
   const safeProjects = allProjects.filter((p: any) => {
     if (!currentUser) return false;
-    if (currentUser.role === "ADMIN" || currentUser.role === "PM") return true;
+    if (currentUser.role === "PM") return true;
     
     if (isClient) {
       const pClientObj = p.client || p.klien;

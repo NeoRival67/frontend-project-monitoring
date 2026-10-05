@@ -22,6 +22,7 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
+    roles: ["PM", "CLIENT"], // ADMIN tidak boleh melihat Dashboard Overview
     items: [
       { label: "Overview", href: "/overview", icon: "📊" },
     ],
@@ -29,13 +30,14 @@ const navGroups: NavGroup[] = [
   {
     title: "Master Data",
     collapsible: true,
-    roles: ["ADMIN", "PM"], // Hanya ADMIN & PM yang bisa melihat Master Data
+    roles: ["ADMIN"], // Hanya ADMIN yang bisa melihat Master Data
     items: [
       { label: "Client / Vendor", href: "/clients", icon: "🏢" },
       { label: "Master User & Tim", href: "/master-tim", icon: "👥" },
     ],
   },
   {
+    roles: ["PM", "CLIENT", "VENDOR", "TIM"], // ADMIN tidak boleh Create, Read, Update, Delete Proyek
     items: [
       { label: "Projects", href: "/proyek", icon: "📁" },
     ],

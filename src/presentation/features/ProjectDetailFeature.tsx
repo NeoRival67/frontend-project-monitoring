@@ -39,17 +39,30 @@ export const ProjectDetailFeature = () => {
     }
   }, []);
 
-  // Ambil role pengguna dari localStorage untuk keperluan otorisasi UI
-  let currentUserRole = "TIM";
-  try {
-    const usr = localStorage.getItem("user");
-    if (usr) {
-       const parsed = JSON.parse(usr);
-       currentUserRole = parsed.role?.toUpperCase();
-    }
-  } catch(e) {}
+  const currentUserRole = currentUser?.role?.toUpperCase() || "";
+  const canChangeStatus = ["PM", "CLIENT"].includes(currentUserRole);
 
-  const canChangeStatus = ["ADMIN", "PM", "CLIENT"].includes(currentUserRole);
+  if (currentUserRole === "ADMIN") {
+    return (
+      <div className="w-full py-20 text-center">
+        <div className="max-w-md mx-auto p-6 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-2xl">
+          <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+            ✕
+          </div>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Akses Ditolak</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Role Admin tidak memiliki izin untuk melihat atau mengelola detail proyek.
+          </p>
+          <button 
+            onClick={() => router.push('/master-tim')} 
+            className="mt-4 bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-slate-700 transition-colors"
+          >
+            Kembali ke Master Data
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // TARIK DATA API
   const { data: response, isLoading } = useProyekDetail(projectId);

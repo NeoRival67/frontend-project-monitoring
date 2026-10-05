@@ -20,6 +20,8 @@ export const CreateAktivitas: React.FC<CreateAktivitasProps> = ({ isOpen, onClos
     description: '',
     startDate: '',
     dueDate: '',
+    actualStartDate: '',
+    actualEndDate: '',
     budget: 0,
     category: 'Development',
     progress: 0,
@@ -57,6 +59,8 @@ export const CreateAktivitas: React.FC<CreateAktivitasProps> = ({ isOpen, onClos
         status: formData.status as StatusAktivitas,
         startDate: formData.startDate ? new Date(formData.startDate).toISOString() : undefined,
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+        actualStartDate: formData.actualStartDate ? new Date(formData.actualStartDate).toISOString() : undefined,
+        actualEndDate: formData.actualEndDate ? new Date(formData.actualEndDate).toISOString() : undefined,
       };
 
       await createAktivitas(proyekId, payload);
@@ -101,14 +105,33 @@ export const CreateAktivitas: React.FC<CreateAktivitasProps> = ({ isOpen, onClos
               <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Mulai *</label>
-                <input required type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white"/>
+            {/* Bagian Periode Rencana */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-3">
+              <span className="text-xs font-bold text-slate-700 tracking-wide block uppercase">1. Periode Rencana</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Mulai Rencana *</label>
+                  <input required type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Deadline / Selesai Rencana *</label>
+                  <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white" />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Deadline *</label>
-                <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white" />
+            </div>
+
+            {/* Bagian Periode Aktual */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-3">
+              <span className="text-xs font-bold text-slate-700 tracking-wide block uppercase">2. Periode Aktual (Opsional)</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Mulai Aktual</label>
+                  <input type="date" name="actualStartDate" value={formData.actualStartDate} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Selesai Aktual</label>
+                  <input type="date" name="actualEndDate" value={formData.actualEndDate} onChange={handleChange} className="w-full border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 bg-white" />
+                </div>
               </div>
             </div>
 

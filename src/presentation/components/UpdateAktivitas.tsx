@@ -17,6 +17,7 @@ export const UpdateAktivitas: React.FC<UpdateAktivitasProps> = ({ isOpen, onClos
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '', description: '', startDate: '', dueDate: '',
+    actualStartDate: '', actualEndDate: '',
     budget: 0, category: 'Development', progress: 0, status: 'Belum Mulai',
     weight: 10, assignees: [] as string[]
   });
@@ -30,6 +31,8 @@ export const UpdateAktivitas: React.FC<UpdateAktivitasProps> = ({ isOpen, onClos
         // Potong ISO string untuk input type="date" (YYYY-MM-DD)
         startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
         dueDate: initialData.dueDate ? initialData.dueDate.split('T')[0] : '',
+        actualStartDate: initialData.actualStartDate ? initialData.actualStartDate.split('T')[0] : '',
+        actualEndDate: initialData.actualEndDate ? initialData.actualEndDate.split('T')[0] : '',
         budget: initialData.budget || 0,
         category: initialData.category || 'Development',
         progress: initialData.progress || 0,
@@ -71,6 +74,8 @@ export const UpdateAktivitas: React.FC<UpdateAktivitasProps> = ({ isOpen, onClos
                 weight: formData.weight ? Number(formData.weight) : 0,
                 startDate: formData.startDate ? new Date(formData.startDate).toISOString() : undefined,
                 dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+                actualStartDate: formData.actualStartDate ? new Date(formData.actualStartDate).toISOString() : null,
+                actualEndDate: formData.actualEndDate ? new Date(formData.actualEndDate).toISOString() : null,
             };
             
             const targetId = initialData.id;
@@ -89,7 +94,7 @@ export const UpdateAktivitas: React.FC<UpdateAktivitasProps> = ({ isOpen, onClos
             
             // Bisa nampilin error message dari backend NestJS kalau ada
             const errorMsg = error.response?.data?.message || "Terjadi kesalahan sistem";
-            alert(`Gagal menambahkan aktivitas: ${errorMsg}`);
+            alert(`Gagal mengupdate aktivitas: ${errorMsg}`);
             
             } finally {
             setIsLoading(false);
@@ -121,14 +126,33 @@ export const UpdateAktivitas: React.FC<UpdateAktivitasProps> = ({ isOpen, onClos
               <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Mulai *</label>
-                <input required type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
+            {/* Bagian Periode Rencana */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-3">
+              <span className="text-xs font-bold text-slate-700 tracking-wide block uppercase">1. Periode Rencana</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Mulai Rencana *</label>
+                  <input required type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Deadline / Selesai Rencana *</label>
+                  <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Deadline *</label>
-                <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
+            </div>
+
+            {/* Bagian Periode Aktual */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 space-y-3">
+              <span className="text-xs font-bold text-slate-700 tracking-wide block uppercase">2. Periode Aktual</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Mulai Aktual</label>
+                  <input type="date" name="actualStartDate" value={formData.actualStartDate} onChange={handleChange} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Selesai Aktual</label>
+                  <input type="date" name="actualEndDate" value={formData.actualEndDate} onChange={handleChange} className="w-full border text-slate-800 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500" />
+                </div>
               </div>
             </div>
 

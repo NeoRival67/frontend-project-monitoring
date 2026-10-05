@@ -56,7 +56,11 @@ export function useAuth() {
       localStorage.setItem("accessToken", token);
       localStorage.setItem("user", JSON.stringify(data.user));
       queryClient.setQueryData(AUTH_QUERY_KEY, data.user);
-      router.push("/proyek");
+      if (data.user?.role === "ADMIN") {
+        router.push("/master-tim");
+      } else {
+        router.push("/proyek");
+      }
     },
   });
 
