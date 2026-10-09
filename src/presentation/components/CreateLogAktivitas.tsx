@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from "@/infrastructure/api/apiClient";
 import { Aktivitas } from '@/core/entities/Proyek'; 
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CreateLogAktivitasProps {
   isOpen: boolean;
   onClose: () => void;
-  activities: Aktivitas[] 
+  activities: Aktivitas[];
   onSuccess: () => void;
 }
 
 export const CreateLogAktivitas: React.FC<CreateLogAktivitasProps> = ({ isOpen, onClose, activities, onSuccess }) => {
+  const queryClient = useQueryClient();
   const [aktivitasId, setAktivitasId] = useState('');
   const [userId, setUserId] = useState('');
   const [tipeLog, setTipeLog] = useState('Update Progress'); 
@@ -18,6 +20,11 @@ export const CreateLogAktivitas: React.FC<CreateLogAktivitasProps> = ({ isOpen, 
   const [deskripsi, setDeskripsi] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [tanggal, setTanggal] = useState('');
+
+  const selectedActivity = activities.find(a => a.id === aktivitasId);
+  const currentProgress = selectedActivity?.progress ?? 0;
+  const parsedAdded = Number(progress) || 0;
+  const estimatedNewProgress = Math.min(100, currentProgress + parsedAdded);
 
   useEffect(() => {
     if (isOpen) {
@@ -41,12 +48,15 @@ export const CreateLogAktivitas: React.FC<CreateLogAktivitasProps> = ({ isOpen, 
         description: deskripsi,
         progressAdded: tipeLog === 'Update Progress' && progress ? Number(progress) : 0,
         costIncurred: tipeLog === 'Realisasi Biaya' && biaya ? Number(biaya) : 0,
-        status: "ON_TRACK", // Hardcode sementara sesuai contoh lu
+        status: "ON_TRACK",
         logDate: tanggal ? new Date(tanggal).toISOString() : new Date().toISOString(),
       };
 
       // Fetch endpoint logaktivitas
       await apiClient.post('/log-aktivitas/post-log', payload);
+
+      // Invalidate query proyek agar daftar aktivitas & progress bar langsung update
+      queryClient.invalidateQueries({ queryKey: ["proyek"] });
 
       // Reset form
       setAktivitasId('');
@@ -64,8 +74,6 @@ export const CreateLogAktivitas: React.FC<CreateLogAktivitasProps> = ({ isOpen, 
     } finally {
       setIsLoading(false);
     }
-
-    
   };
 
    if (!isOpen) return null;
@@ -92,7 +100,9 @@ export const CreateLogAktivitas: React.FC<CreateLogAktivitasProps> = ({ isOpen, 
                 >
                   <option value="" disabled>Pilih Aktivitas</option>
                   {activities.map(act => (
-                    <option key={act.id} value={act.id}>{act.name}</option>
+                    <option key={act.id} value={act.id}>
+                      {act.name} (Progress: {act.progress ?? 0}%)
+                    </option>
                   ))}
                 </select>
               </div>
@@ -127,13 +137,29 @@ export const CreateLogAktivitas: React.FC<CreateLogAktivitasProps> = ({ isOpen, 
               {/* Input Dinamis berdasarkan Tipe UI */}
               {tipeLog === 'Update Progress' && (
                 <div>
-                  <label className="block text-[13px] font-semibold text-slate-700 mb-1.5">Progress (%)</label>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-[13px] font-semibold text-slate-700">
+                      Penambahan Progress (+%) <span className="text-rose-500">*</span>
+                    </label>
+                    {selectedActivity && (
+                      <span className="text-xs text-slate-500">
+                        Saat ini: <strong className="text-slate-800">{currentProgress}%</strong>
+                      </span>
+                    )}
+                  </div>
                   <input 
-                    type="number" min="0" max="100"
+                    type="number" min="1" max={Math.max(1, 100 - currentProgress)}
                     value={progress} onChange={(e) => setProgress(e.target.value)}
-                    placeholder="0-100"
+                    placeholder="Contoh: 5, 10, 20"
+                    required
                     className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-lg outline-none focus:border-blue-500 text-slate-700"
                   />
+                  {selectedActivity && progress && parsedAdded > 0 && (
+                    <div className="mt-1.5 flex items-center justify-between text-xs bg-blue-50/80 px-2.5 py-1 rounded border border-blue-100 text-blue-700">
+                      <span>Estimasi progress baru:</span>
+                      <strong className="font-bold">{estimatedNewProgress}%</strong>
+                    </div>
+                  )}
                 </div>
               )}
 
