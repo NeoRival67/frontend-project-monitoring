@@ -51,9 +51,10 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
   };
 
   // 1. Kalkulasi Progress Aktivitas
-  const completedActivities = activities.filter((a) => 
-    a.status === 'selesai' || a.progress === 100
-  ).length;
+  const completedActivities = activities.filter((a) => {
+    const s = (a.status || '').toLowerCase();
+    return s === 'selesai' || s === 'done' || s === 'completed' || a.progress === 100;
+  }).length;
   
   // Gunakan progres dari entitas Proyek (jika ada), atau hitung rata-rata dari aktivitas
   const projectProgress = proyek.progres !== undefined 

@@ -185,11 +185,8 @@ export function TeamModal({ user, onClose, onSuccess }: TeamModalProps) {
               onChange={handleChange}
               required
             >
-              <option value="ADMIN">ADMIN</option>
               <option value="PM">PM</option>
-              <option value="VENDOR">VENDOR</option>
               <option value="TIM">TIM</option>
-              <option value="CLIENT">CLIENT</option>
             </select>
           </div>
 

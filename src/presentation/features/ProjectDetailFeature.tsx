@@ -65,7 +65,7 @@ export const ProjectDetailFeature = () => {
   }
 
   // TARIK DATA API
-  const { data: response, isLoading } = useProyekDetail(projectId);
+  const { data: response, isLoading, refetch } = useProyekDetail(projectId);
 
   const proyek = (response as any)?.proyek || response || {};
 
@@ -212,11 +212,15 @@ export const ProjectDetailFeature = () => {
             proyek={proyek} 
             activities={activities} 
             risks={risks} 
+            onRefresh={refetch}
           />
         )}
 
        {activeTab === 'monitoring' && (
-          <TabMonitoring activities={activities} />
+          <TabMonitoring 
+            activities={activities} 
+            onRefresh={refetch}
+          />
         )}
 
         {activeTab === 'approval' && (
