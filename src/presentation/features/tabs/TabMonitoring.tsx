@@ -7,14 +7,17 @@ import { CreateLogAktivitas } from '@/presentation/components/CreateLogAktivitas
 import apiClient from "@/infrastructure/api/apiClient";
 import type { Aktivitas } from '@/core/entities/Proyek'; 
 import { getLogByProyek } from '@/infrastructure/repositories/proyek.repo'; 
+import { useQueryClient } from '@tanstack/react-query';
 
 interface TabMonitoringProps {
   activities: Aktivitas[]; 
+  onRefresh?: () => void;
 }
 
-export const TabMonitoring: React.FC<TabMonitoringProps> = ({ activities }) => {
+export const TabMonitoring: React.FC<TabMonitoringProps> = ({ activities, onRefresh }) => {
   const params = useParams();
   const proyekId = params?.id as string;
+  const queryClient = useQueryClient();
 
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,18 +27,23 @@ export const TabMonitoring: React.FC<TabMonitoringProps> = ({ activities }) => {
   const filters = ['Semua', 'Update Progress', 'Realisasi Biaya', 'Catatan'];
 
   const fetchLogs = async () => {
-        if (!proyekId) return;
-        setIsLoading(true);
-        try {
-        const dataLogs = await getLogByProyek(proyekId);
-        setLogs(dataLogs);
-        } catch (error) {
-            console.log("gagal mengambil data log: ", error);
-            
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    if (!proyekId) return;
+    setIsLoading(true);
+    try {
+      const dataLogs = await getLogByProyek(proyekId);
+      setLogs(dataLogs);
+    } catch (error) {
+      console.log("gagal mengambil data log: ", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["proyek"] });
+    fetchLogs();
+    if (onRefresh) onRefresh();
+  };
     
   useEffect(() => {
     fetchLogs();
@@ -155,7 +163,7 @@ export const TabMonitoring: React.FC<TabMonitoringProps> = ({ activities }) => {
         isOpen={isCreateModalOpen} 
         onClose={() => setIsCreateModalOpen(false)}
         activities={activities} 
-        onSuccess={fetchLogs} 
+        onSuccess={handleSuccess} 
       />
     </div>
   );

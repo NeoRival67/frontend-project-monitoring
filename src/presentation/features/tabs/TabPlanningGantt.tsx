@@ -12,14 +12,16 @@ import { CreateRisk } from '@/presentation/components/CreateRisk';
 import { DeleteRisk } from '@/presentation/components/DeleteRisk';
 import { RiskRepository } from '@/infrastructure/repositories/risk.repo';
 import { getLogByProyek } from '@/infrastructure/repositories/proyek.repo';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface TabPlanningProps {
   proyek: Proyek;
   activities: Aktivitas[];
   risks: PenilaianResiko[];
+  onRefresh?: () => void;
 }
 
-export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activities = [], risks = [] }) => {
+export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activities = [], risks = [], onRefresh }) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
@@ -29,33 +31,39 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
   const [isCreateRiskOpen, setIsCreateRiskOpen] = useState(false);
   const [isDeleteRiskOpen, setIsDeleteRiskOpen] = useState(false); // Mengganti isEditRiskOpen
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
+  const queryClient = useQueryClient();
   const [logsByAktivitas, setLogsByAktivitas] = useState<Record<string, any[]>>({});
+
+  const fetchLogs = async () => {
+    if (!proyek?.id) return;
+    try {
+      const allLogs = await getLogByProyek(proyek.id);
+      const grouped: Record<string, any[]> = {};
+      if (Array.isArray(allLogs)) {
+        allLogs.forEach((log: any) => {
+          const aktId = log.aktivitasId;
+          if (!grouped[aktId]) grouped[aktId] = [];
+          grouped[aktId].push(log);
+        });
+      }
+      setLogsByAktivitas(grouped);
+    } catch (error) {
+      console.error('Gagal mengambil log aktivitas:', error);
+    }
+  };
 
   // Fetch logs per proyek untuk mendapatkan costIncurred (realisasi biaya) yang sebenarnya
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const allLogs = await getLogByProyek(proyek.id);
-        // Group logs by aktivitasId
-        const grouped: Record<string, any[]> = {};
-        if (Array.isArray(allLogs)) {
-          allLogs.forEach((log: any) => {
-            const aktId = log.aktivitasId;
-            if (!grouped[aktId]) grouped[aktId] = [];
-            grouped[aktId].push(log);
-          });
-        }
-        setLogsByAktivitas(grouped);
-      } catch (error) {
-        console.error('Gagal mengambil log aktivitas:', error);
-      }
-    };
-    if (proyek.id) fetchLogs();
-  }, [proyek.id]);
+    fetchLogs();
+  }, [proyek?.id]);
 
   // Helper: Hitung total realisasi biaya dari log costIncurred
-  const getRealisasiBiaya = (aktivitasId: string): number => {
-    const logs = logsByAktivitas[aktivitasId] || [];
+  const getRealisasiBiaya = (act: any): number => {
+    if (act?.logs && Array.isArray(act.logs) && act.logs.length > 0) {
+      return act.logs.reduce((sum: number, log: any) => sum + (Number(log.costIncurred) || 0), 0);
+    }
+    const actId = typeof act === 'string' ? act : act?.id;
+    const logs = logsByAktivitas[actId] || [];
     return logs.reduce((total: number, log: any) => {
       return total + (Number(log.costIncurred) || 0);
     }, 0);
@@ -70,31 +78,30 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
   })) || [];
 
   const handleSuccess = () => {
-    console.log("Data berhasil disimpan, silakan refresh data!");
+    queryClient.invalidateQueries({ queryKey: ["proyek"] });
+    fetchLogs();
+    if (onRefresh) onRefresh();
   };
 
   // Fungsi untuk handle perubahan status risiko
   const handleStatusChange = async (riskId: string, newStatus: string) => {
     try {
       await RiskRepository.updateRiskStatus(riskId, newStatus);
-      
-      
+      handleSuccess();
     } catch (error) {
       console.error("Gagal update status risiko:", error);
       alert("Gagal mengubah status risiko.");
     }
   };
 
-    const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget.id) return;
     
     setIsDeleting(true);
     try {
       await deleteAktivitas(deleteTarget.id); 
-      
-  
-      
       setIsDeleteOpen(false); 
+      handleSuccess();
     } catch (error) {
       console.error("Error Delete aktivitas:", error);
       alert("Gagal menghapus aktivitas.");
@@ -125,13 +132,13 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
   };
 
   const getStatusBadge = (status: string, progres: number) => {
-    const safeStatus = (status || '').toLowerCase();
+    const safeStatus = (status || '').toLowerCase().replace(/_/g, ' ').trim();
 
-    if (safeStatus === 'selesai' || safeStatus === 'done' || progres === 100) 
+    if (safeStatus === 'selesai' || safeStatus === 'done' || safeStatus === 'completed' || progres >= 100) 
       return <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-semibold">Selesai</span>;
     if (safeStatus === 'terlambat' || safeStatus === 'late') 
       return <span className="bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full text-xs font-semibold">Terlambat</span>;
-    if (safeStatus === 'berjalan' || safeStatus === 'in progress' || safeStatus === 'ongoing') 
+    if (safeStatus === 'berjalan' || safeStatus === 'in progress' || safeStatus === 'ongoing' || progres > 0) 
       return <span className="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-semibold">Berjalan</span>;
     
     return <span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full text-xs font-semibold">Belum Mulai</span>;
@@ -181,18 +188,18 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
                 const budgetAct = act.budget ? Number(act.budget) : (budgetTotal * ((act.weight || 0) / 100));
                 
                 // Gunakan act.progress sesuai nama field dari API (atau act.progres jika di interface lama)
-                const currentProgress = act.progress ?? act.progress ?? 0;
+                const currentProgress = act.progress ?? 0;
                 
                 // Realisasi biaya: gunakan data costIncurred dari log aktivitas (bukan estimasi dari progress)
-                const realisasiAct = getRealisasiBiaya(act.id);
+                const realisasiAct = getRealisasiBiaya(act);
 
                 return (
                   <tr key={act.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 pr-4">
                       {/* Gunakan act.name (dari API baru) atau fallback ke act.nama */}
                       <p className="font-semibold text-slate-800">{act.name}</p>
-                      <p className="text-xs text-slate-800 mt-0.5 max-w-[200px] truncate" title={act.description}>
-                        {act.deskripsi}
+                      <p className="text-xs text-slate-500 mt-0.5 max-w-[200px] truncate" title={act.description || act.deskripsi}>
+                        {act.description || act.deskripsi || '-'}
                       </p>
                     </td>
                     <td className="py-4 px-4 text-xs">

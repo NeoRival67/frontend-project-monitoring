@@ -78,22 +78,6 @@ export const DashboardOverview = () => {
   const userRole = currentUser?.role?.toUpperCase() || "";
   const isNotAllowed = isMounted && (userRole === "VENDOR" || userRole === "TIM" || userRole === "STAFF" || userRole === "ADMIN");
 
-  if (isNotAllowed) {
-    return (
-      <div className="w-full flex flex-col items-center justify-center py-20 px-4">
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 max-w-md text-center shadow-sm">
-          <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Akses Ditolak</h2>
-          <p className="text-sm text-slate-500">
-            Maaf, role {currentUser?.role || 'Anda'} tidak memiliki akses untuk melihat Dashboard Overview.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const isRestricted = userRole !== "PM";
   const isClient = userRole === "CLIENT";
 
@@ -248,6 +232,22 @@ export const DashboardOverview = () => {
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
   };
+
+  if (isNotAllowed) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-20 px-4">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 max-w-md text-center shadow-sm">
+          <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Akses Ditolak</h2>
+          <p className="text-sm text-slate-500">
+            Maaf, role {currentUser?.role || 'Anda'} tidak memiliki akses untuk melihat Dashboard Overview.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-6 pb-10">
