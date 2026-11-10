@@ -156,7 +156,7 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
             onClick={() => setIsCreateOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Tambah Aktivitas
+            <Plus className="w-4 h-4" /> Tambah Aktivitas set fase proyek 
           </button>
         </div>
 
@@ -317,7 +317,7 @@ export const TabPlanningGantt: React.FC<TabPlanningProps> = ({ proyek, activitie
             onClick={() => setIsCreateRiskOpen(true)}
             className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Tambah Risiko
+            <Plus className="w-4 h-4" /> set Risiko
           </button>
         </div>
 
