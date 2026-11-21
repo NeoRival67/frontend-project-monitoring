@@ -30,7 +30,7 @@ export const TabApproval: React.FC<TabApprovalProps> = ({ activities, currentUse
   // -------------------------------------------------------------
   // VALIDASI POV (HAK AKSES)
   // -------------------------------------------------------------
-  const role = (currentUser.role || '').toUpperCase();
+  const role = (currentUser?.role || (currentUser as any)?.tipe || '').toUpperCase();
   
   // 1. Yang bisa Tambah/Upload: Vendor, Tim, PM, Admin
   //const canSubmit = ['vendor', 'tim', 'pm', 'project manager', 'admin','ADMIN','VENDOR','PM','TIM'].includes(role);
@@ -38,7 +38,7 @@ export const TabApproval: React.FC<TabApprovalProps> = ({ activities, currentUse
   // 2. Yang bisa Review/Approve: Client, Admin
   
   const canReview = ['CLIENT', 'ADMIN', 'client', 'admin'].includes(role);
-  const canSubmit = true;
+  const canSubmit = role !== 'CLIENT';
 
   console.log("=== DEBUG TAB APPROVAL (LEVEL KOMPONEN) ===");
   console.log("Data currentUser asli:", currentUser);
