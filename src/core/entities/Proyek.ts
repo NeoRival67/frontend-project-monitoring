@@ -185,7 +185,7 @@ export interface ReviewApproval {
 
 export interface CreateReviewPayload {
   deliverableId: string;
-  reviewerId: string;
+  reviewerId?: string;
   status: StatusApproval;
   comments?: string;
 }

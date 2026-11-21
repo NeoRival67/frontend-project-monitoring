@@ -16,7 +16,11 @@ export function TeamManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDept, setFilterDept] = useState("Semua Departemen");
 
-  const safeUsers = users || [];
+  const safeUsers = (users || []).filter(u => {
+    const role = (u.role || '').toUpperCase();
+    const tipe = ((u as any).tipe || '').toUpperCase();
+    return role !== 'CLIENT' && role !== 'ADMIN' && tipe !== 'CLIENT' && tipe !== 'ADMIN';
+  });
 
   const handleEdit = (user: User) => {
     setSelectedUser(user);

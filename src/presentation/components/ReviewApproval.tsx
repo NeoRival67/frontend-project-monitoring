@@ -3,13 +3,13 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, XCircle } from 'lucide-react';
 import { ApprovalRepository } from '@/infrastructure/repositories/approval.repo';
-import { Deliverable} from '@/core/entities';
+import { Deliverable, CreateReviewPayload } from '@/core/entities';
 
 interface ReviewApprovalProps {
   isOpen: boolean;
   onClose: () => void;
   deliverable: Deliverable | null; 
-  reviewerId: string;
+  reviewerId?: string;
   onSuccess: () => void;
 }
 
@@ -22,10 +22,9 @@ export const ReviewApproval: React.FC<ReviewApprovalProps> = ({ isOpen, onClose,
   const handleReview = async (status: 'APPROVED' | 'REJECTED' ) => {
     setIsLoading(true);
     try {
-        const payload = {
+        const payload: CreateReviewPayload = {
             deliverableId: deliverable.id,
             status: status,
-            reviewerId: reviewerId,
             comments: comments || "",
         }
       await ApprovalRepository.reviewDeliverable(deliverable.id, payload)

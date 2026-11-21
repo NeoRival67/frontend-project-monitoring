@@ -23,8 +23,8 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
   
   const allUsers = usersData || [];
   const teamMembers = allUsers.filter((u: any) => {
-    const role = (u.role || '').toUpperCase();
-    return role !== 'CLIENT' && role !== 'VENDOR';
+    const role = (u.role || u.jabatan || '').toUpperCase();
+    return role !== 'CLIENT' && role !== 'VENDOR' && role !== 'ADMIN';
   });
 
   const [formData, setFormData] = useState<CreateProyekPayload>({
